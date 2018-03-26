@@ -1,0 +1,25 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "logicAppName": {
+      "value": "mvp-contributions-main"
+    },
+    "nestedLogicApps": {
+      "value": {
+        "contributionTypes": "mvp-contributions-contribution-types",
+        "contributionAreas": "mvp-contributions-contribution-areas",
+        "contributionsFromExcel": "mvp-contributions-excel",
+        "contributionsFromSite": "mvp-contributions-site"
+      }
+    },
+    "connectors": {
+      "value": {
+        "mvpcontributions": {
+          "name": "mvp-contributions",
+          "type": "mvp-contributions"
+        }
+      }
+    }
+  }
+}

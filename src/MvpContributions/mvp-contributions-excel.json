@@ -1,0 +1,267 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "logicAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Logic App"
+      }
+    },
+    "logicAppLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Location of the Logic App"
+      },
+      "allowedValues": [
+        "[resourceGroup().location]",
+        "australiaeast",
+        "australiasoutheast",
+        "brazilsouth",
+        "centralus",
+        "eastasia",
+        "eastus",
+        "eastus2",
+        "japaneast",
+        "japanwest",
+        "northcentralus",
+        "northeurope",
+        "southcentralus",
+        "southeastasia",
+        "westeurope",
+        "westus"
+      ],
+      "defaultValue": "[resourceGroup().location]"
+    },
+
+    "author": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Author"
+      },
+      "defaultValue": "Justin Yoo"
+    },
+    "license": {
+      "type": "string",
+      "metadata": {
+        "description": "License"
+      },
+      "defaultValue": "MIT"
+    },
+    "projectName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the project"
+      },
+      "defaultValue": "MVP Contributions"
+    },
+    "projectSite": {
+      "type": "string",
+      "metadata": {
+        "description": "Project site URL"
+      },
+      "defaultValue": "https://github.com/aliencube/MVP-Contributions"
+    },
+    "projectOwner": {
+      "type": "string",
+      "metadata": {
+        "description": "Project owner"
+      },
+      "defaultValue": "https://aliencube.org"
+    },
+
+    "connectors": {
+      "type": "object",
+      "metadata": {
+        "description": "Logic Apps connectors"
+      },
+      "defaultValue": {}
+    }
+  },
+  "variables": {
+    "logicApp": {
+      "name": "[parameters('logicAppName')]",
+      "location": "[parameters('logicAppLocation')]",
+      "apiVersion": "[providers('Microsoft.Logic', 'workflows').apiVersions[0]]"
+    },
+    "connectors": {
+      "onedrive": {
+        "name": "[parameters('connectors').onedrive.name]",
+        "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', parameters('connectors').onedrive.type)]",
+        "connectionId": "[concat(resourceGroup().id, '/providers/Microsoft.Web/connections/', parameters('connectors').onedrive.name)]"
+      },
+      "excelonline": {
+        "name": "[parameters('connectors').excelonline.name]",
+        "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', parameters('connectors').excelonline.type)]",
+        "connectionId": "[concat(resourceGroup().id, '/providers/Microsoft.Web/connections/', parameters('connectors').excelonline.name)]"
+      }
+    },
+    "tags": {
+      "author": "[parameters('author')]",
+      "license": "[parameters('license')]",
+      "projectName": "[parameters('projectName')]",
+      "projectSite": "[parameters('projectSite')]",
+      "projectOwner": "[parameters('projectOwner')]"
+    }
+  },
+  "resources": [
+    {
+      "comments": "Logic App - Contributions from Excel",
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "[variables('logicApp').apiVersion]",
+      "name": "[variables('logicApp').name]",
+      "location": "[variables('logicApp').location]",
+      "tags": "[variables('tags')]",
+      "properties": {
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "$connections": {
+              "defaultValue": {},
+              "type": "object"
+            }
+          },
+          "triggers": {
+            "manual": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "method": "POST",
+                "schema": {
+                  "properties": {
+                    "filename": {
+                      "type": "string"
+                    },
+                    "filepath": {
+                      "type": "string"
+                    },
+                    "tableName": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "actions": {
+            "FindFiles": {
+              "runAfter": {},
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['onedrive']['connectionId']"
+                  }
+                },
+                "method": "get",
+                "path": "/datasets/default/findFile",
+                "queries": {
+                  "findMode": "OneDriveSearch",
+                  "maxFileCount": 1,
+                  "path": "@triggerBody()?['filepath']",
+                  "query": "@triggerBody()?['filename']"
+                }
+              }
+            },
+            "FileInfo": {
+              "runAfter": {
+                "FindFiles": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": {
+                "driveId": "@{first(split(first(body('FindFiles'))?['Id'], '!'))}",
+                "fileId": "@{first(body('FindFiles'))?['Id']}"
+              }
+            },
+            "GetAllTables": {
+              "runAfter": {
+                "FileInfo": [
+                  "Succeeded"
+                ]
+              },
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['excelonline']['connectionId']"
+                  }
+                },
+                "method": "get",
+                "path": "/codeless/v1.0/drives/@{encodeURIComponent(outputs('FileInfo')?['driveId'])}/items/@{encodeURIComponent(outputs('FileInfo')?['fileId'])}/workbook/tables",
+                "queries": {
+                  "source": "me"
+                }
+              }
+            },
+            "GetTable": {
+              "runAfter": {
+                "GetAllTables": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Query",
+              "inputs": {
+                "from": "@body('GetAllTables')?['value']",
+                "where": "@equals(item()?['name'], triggerBody()?['tableName'])"
+              }
+            },
+            "Response": {
+              "runAfter": {
+                "GetContributions": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Response",
+              "inputs": {
+                "body": "@body('GetContributions')?['value']",
+                "statusCode": 200
+              }
+            },
+            "GetContributions": {
+              "runAfter": {
+                "GetTable": [
+                  "Succeeded"
+                ]
+              },
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['excelonline']['connectionId']"
+                  }
+                },
+                "method": "get",
+                "path": "/drives/@{encodeURIComponent(outputs('FileInfo')?['driveId'])}/files/@{encodeURIComponent(outputs('FileInfo')?['fileId'])}/tables/@{encodeURIComponent(first(body('GetTable'))?['id'])}/items",
+                "queries": {
+                  "source": "me"
+                }
+              }
+            }
+          },
+          "outputs": {}
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "onedrive": {
+                "connectionId": "[variables('connectors').onedrive.connectionId]",
+                "connectionName": "[variables('connectors').onedrive.name]",
+                "id": "[variables('connectors').onedrive.id]"
+              },
+              "excelonline": {
+                "connectionId": "[variables('connectors').excelonline.connectionId]",
+                "connectionName": "[variables('connectors').excelonline.name]",
+                "id": "[variables('connectors').excelonline.id]"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

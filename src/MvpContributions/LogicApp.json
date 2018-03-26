@@ -1,0 +1,109 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "logicAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Logic App"
+      }
+    },
+    "logicAppLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Location of the Logic App"
+      },
+      "allowedValues": [
+        "[resourceGroup().location]",
+        "australiaeast",
+        "australiasoutheast",
+        "brazilsouth",
+        "centralus",
+        "eastasia",
+        "eastus",
+        "eastus2",
+        "japaneast",
+        "japanwest",
+        "northcentralus",
+        "northeurope",
+        "southcentralus",
+        "southeastasia",
+        "westeurope",
+        "westus"
+      ],
+      "defaultValue": "[resourceGroup().location]"
+    },
+
+    "author": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Author"
+      },
+      "defaultValue": "Justin Yoo"
+    },
+    "license": {
+      "type": "string",
+      "metadata": {
+        "description": "License"
+      },
+      "defaultValue": "MIT"
+    },
+    "projectName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the project"
+      },
+      "defaultValue": "MVP Contributions"
+    },
+    "projectSite": {
+      "type": "string",
+      "metadata": {
+        "description": "Project site URL"
+      },
+      "defaultValue": "https://github.com/aliencube/MVP-Contributions"
+    },
+    "projectOwner": {
+      "type": "string",
+      "metadata": {
+        "description": "Project owner"
+      },
+      "defaultValue": "https://aliencube.org"
+    }
+  },
+  "variables": {
+    "logicApp": {
+      "name": "[parameters('logicAppName')]",
+      "location": "[parameters('logicAppLocation')]",
+      "apiVersion": "[providers('Microsoft.Logic', 'workflows').apiVersions[0]]"
+    },
+    "tags": {
+      "author": "[parameters('author')]",
+      "license": "[parameters('license')]",
+      "projectName": "[parameters('projectName')]",
+      "projectSite": "[parameters('projectSite')]",
+      "projectOwner": "[parameters('projectOwner')]"
+    }
+  },
+  "resources": [
+    {
+      "comments": "Logic App",
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "[variables('logicApp').apiVersion]",
+      "name": "[variables('logicApp').name]",
+      "location": "[variables('logicApp').location]",
+      "tags": "[variables('tags')]",
+      "properties": {
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "actions": {},
+          "outputs": {},
+          "parameters": {},
+          "triggers": {}
+        },
+        "parameters": {}
+      }
+    }
+  ],
+  "outputs": {}
+}

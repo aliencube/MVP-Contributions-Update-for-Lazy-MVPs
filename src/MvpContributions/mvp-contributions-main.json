@@ -1,0 +1,521 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "logicAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Logic App"
+      }
+    },
+    "logicAppLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Location of the Logic App"
+      },
+      "allowedValues": [
+        "[resourceGroup().location]",
+        "australiaeast",
+        "australiasoutheast",
+        "brazilsouth",
+        "centralus",
+        "eastasia",
+        "eastus",
+        "eastus2",
+        "japaneast",
+        "japanwest",
+        "northcentralus",
+        "northeurope",
+        "southcentralus",
+        "southeastasia",
+        "westeurope",
+        "westus"
+      ],
+      "defaultValue": "[resourceGroup().location]"
+    },
+
+    "author": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Author"
+      },
+      "defaultValue": "Justin Yoo"
+    },
+    "license": {
+      "type": "string",
+      "metadata": {
+        "description": "License"
+      },
+      "defaultValue": "MIT"
+    },
+    "projectName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the project"
+      },
+      "defaultValue": "MVP Contributions"
+    },
+    "projectSite": {
+      "type": "string",
+      "metadata": {
+        "description": "Project site URL"
+      },
+      "defaultValue": "https://github.com/aliencube/MVP-Contributions"
+    },
+    "projectOwner": {
+      "type": "string",
+      "metadata": {
+        "description": "Project owner"
+      },
+      "defaultValue": "https://aliencube.org"
+    },
+
+    "nestedLogicApps": {
+      "type": "object",
+      "metadata": {
+        "description": "Nested Logic Apps"
+      },
+      "defaultValue": {}
+    },
+    "connectors": {
+      "type": "object",
+      "metadata": {
+        "description": "Logic Apps connectors"
+      },
+      "defaultValue": {}
+    },
+    "connectorApiKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "API key for custom connector"
+      }
+    }
+  },
+  "variables": {
+    "logicApp": {
+      "name": "[parameters('logicAppName')]",
+      "location": "[parameters('logicAppLocation')]",
+      "apiVersion": "[providers('Microsoft.Logic', 'workflows').apiVersions[0]]"
+    },
+    "nestedLogicApps": {
+      "contributionTypes": {
+        "name": "[parameters('nestedLogicApps').contributionTypes]",
+        "workflowId": "[resourceId('Microsoft.Logic/workflows', parameters('nestedLogicApps').contributionTypes)]",
+        "triggerId": "[resourceId('Microsoft.Logic/workflows/triggers', parameters('nestedLogicApps').contributionTypes, 'manual')]"
+      },
+      "contributionAreas": {
+        "name": "[parameters('nestedLogicApps').contributionAreas]",
+        "workflowId": "[resourceId('Microsoft.Logic/workflows', parameters('nestedLogicApps').contributionAreas)]",
+        "triggerId": "[resourceId('Microsoft.Logic/workflows/triggers', parameters('nestedLogicApps').contributionAreas, 'manual')]"
+      },
+      "contributionsFromExcel": {
+        "name": "[parameters('nestedLogicApps').contributionsFromExcel]",
+        "workflowId": "[resourceId('Microsoft.Logic/workflows', parameters('nestedLogicApps').contributionsFromExcel)]",
+        "triggerId": "[resourceId('Microsoft.Logic/workflows/triggers', parameters('nestedLogicApps').contributionsFromExcel, 'manual')]"
+      },
+      "contributionsFromSite": {
+        "name": "[parameters('nestedLogicApps').contributionsFromSite]",
+        "workflowId": "[resourceId('Microsoft.Logic/workflows', parameters('nestedLogicApps').contributionsFromSite)]",
+        "triggerId": "[resourceId('Microsoft.Logic/workflows/triggers', parameters('nestedLogicApps').contributionsFromSite, 'manual')]"
+      }
+    },
+    "connectors": {
+      "mvpcontributions": {
+        "name": "[parameters('connectors').mvpcontributions.name]",
+        "id": "[resourceId('Microsoft.Web/customApis', parameters('connectors').mvpcontributions.type)]",
+        "connectionId": "[concat(resourceGroup().id, '/providers/Microsoft.Web/connections/', parameters('connectors').mvpcontributions.name)]",
+        "apiKey": "[parameters('connectorApiKey')]"
+      }
+    },
+    "tags": {
+      "author": "[parameters('author')]",
+      "license": "[parameters('license')]",
+      "projectName": "[parameters('projectName')]",
+      "projectSite": "[parameters('projectSite')]",
+      "projectOwner": "[parameters('projectOwner')]"
+    }
+  },
+  "resources": [
+    {
+      "comments": "Logic App - Contributions",
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "[variables('logicApp').apiVersion]",
+      "name": "[variables('logicApp').name]",
+      "location": "[variables('logicApp').location]",
+      "tags": "[variables('tags')]",
+      "properties": {
+        "state": "Enabled",
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "$connections": {
+              "defaultValue": {},
+              "type": "object"
+            },
+            "nestedLogicApps": {
+              "defaultValue": {},
+              "type": "object"
+            }
+          },
+          "triggers": {
+            "manual": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "method": "POST",
+                "schema": {
+                  "properties": {
+                    "filename": {
+                      "type": "string"
+                    },
+                    "filepath": {
+                      "type": "string"
+                    },
+                    "tableName": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "actions": {
+            "GetAllContributionTypes": {
+              "runAfter": {},
+              "type": "Http",
+              "inputs": {
+                "method": "GET",
+                "uri": "@parameters('nestedLogicApps')['contributionTypes']['triggerUrl']"
+              }
+            },
+            "GetAllContributionAreas": {
+              "runAfter": {},
+              "type": "Http",
+              "inputs": {
+                "method": "GET",
+                "uri": "@parameters('nestedLogicApps')['contributionAreas']['triggerUrl']"
+              }
+            },
+            "GetAllRecordsFromExcel": {
+              "runAfter": {},
+              "type": "Http",
+              "inputs": {
+                "body": "@triggerBody()",
+                "method": "POST",
+                "uri": "@parameters('nestedLogicApps')['contributionsFromExcel']['triggerUrl']"
+              }
+            },
+            "GetAllExistingContributionsFromSite": {
+              "runAfter": {},
+              "type": "Http",
+              "inputs": {
+                "method": "GET",
+                "uri": "@parameters('nestedLogicApps')['contributionsFromSite']['triggerUrl']"
+              }
+            },
+            "InitialiseContributionsAdded": {
+              "runAfter": {
+                "GetAllContributionAreas": [
+                  "Succeeded"
+                ],
+                "GetAllContributionTypes": [
+                  "Succeeded"
+                ],
+                "GetAllExistingContributionsFromSite": [
+                  "Succeeded"
+                ],
+                "GetAllRecordsFromExcel": [
+                  "Succeeded"
+                ]
+              },
+              "type": "InitializeVariable",
+              "inputs": {
+                "variables": [
+                  {
+                    "name": "ContributionsAdded",
+                    "type": "Array",
+                    "value": []
+                  }
+                ]
+              }
+            },
+            "InitialiseContributionsUpdated": {
+              "runAfter": {
+                "InitialiseContributionsAdded": [
+                  "Succeeded"
+                ]
+              },
+              "type": "InitializeVariable",
+              "inputs": {
+                "variables": [
+                  {
+                    "name": "ContributionsUpdated",
+                    "type": "Array",
+                    "value": []
+                  }
+                ]
+              }
+            },
+            "LoopRecordsFromExcel": {
+              "foreach": "@body('GetAllRecordsFromExcel')",
+              "actions": {
+                "FilterContributionTypes": {
+                  "runAfter": {},
+                  "type": "Query",
+                  "inputs": {
+                    "from": "@body('GetAllContributionTypes')",
+                    "where": "@equals(item()?['Name'], items('LoopRecordsFromExcel')?['ActivityType'])"
+                  }
+                },
+                "FilterContributionAreas": {
+                  "runAfter": {
+                    "FilterContributionTypes": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Query",
+                  "inputs": {
+                    "from": "@body('GetAllContributionAreas')",
+                    "where": "@and(equals(item()?['AwardName'], items('LoopRecordsFromExcel')?['ContributionCategory']), equals(item()?['Name'], items('LoopRecordsFromExcel')?['ContributionArea']))"
+                  }
+                },
+                "FilterRecordsFromExcel": {
+                  "runAfter": {
+                    "FilterContributionAreas": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Query",
+                  "inputs": {
+                    "from": "@body('GetAllExistingContributionsFromSite')",
+                    "where": "@and(equals(item()?['ContributionTypeName'], items('LoopRecordsFromExcel')?['ActivityType']), equals(item()?['ReferenceUrl'], items('LoopRecordsFromExcel')?['URL']), equals(item()?['Title'], items('LoopRecordsFromExcel')?['TitleOfActivity']))"
+                  }
+                },
+                "IfRecordNotExists": {
+                  "actions": {
+                    "AddContribution": {
+                      "runAfter": {},
+                      "type": "ApiConnection",
+                      "inputs": {
+                        "body": {
+                          "AnnualQuantity": "@items('LoopRecordsFromExcel')?['AnnualQuantity']",
+                          "AnnualReach": "@items('LoopRecordsFromExcel')?['AnnualReach']",
+                          "ContributionTechnology": {
+                            "AwardCategory": "@{first(body('FilterContributionAreas'))?['AwardCategory']}",
+                            "AwardName": "@{first(body('FilterContributionAreas'))?['AwardName']}",
+                            "Id": "@{first(body('FilterContributionAreas'))?['Id']}",
+                            "Name": "@{first(body('FilterContributionAreas'))?['Name']}"
+                          },
+                          "ContributionType": {
+                            "EnglishName": "@{first(body('FilterContributionTypes'))?['EnglishName']}",
+                            "Id": "@{first(body('FilterContributionTypes'))?['Id']}",
+                            "Name": "@{first(body('FilterContributionTypes'))?['Name']}"
+                          },
+                          "ContributionTypeName": "@{first(body('FilterContributionTypes'))?['Name']}",
+                          "Description": "@items('LoopRecordsFromExcel')?['Description']",
+                          "ReferenceUrl": "@{items('LoopRecordsFromExcel')?['URL']}",
+                          "SecondAnnualQuantity": "@items('LoopRecordsFromExcel')?['SecondAnnualQuantity']",
+                          "StartDate": "@{items('LoopRecordsFromExcel')?['DateOfActivityConverted']}",
+                          "Title": "@{items('LoopRecordsFromExcel')?['TitleOfActivity']}",
+                          "Visibility": {
+                            "Description": "Everyone",
+                            "Id": 299600000,
+                            "LocalizeKey": "PublicVisibilityText"
+                          }
+                        },
+                        "headers": {
+                          "Ocp-Apim-Subscription-Key": "@parameters('$connections')['mvpcontributions']['apiKey']"
+                        },
+                        "host": {
+                          "connection": {
+                            "name": "@parameters('$connections')['mvpcontributions']['connectionId']"
+                          }
+                        },
+                        "method": "post",
+                        "path": "/api/contributions"
+                      }
+                    },
+                    "AddContributionAdded": {
+                      "runAfter": {
+                        "AddContribution": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "AppendToArrayVariable",
+                      "inputs": {
+                        "name": "ContributionsAdded",
+                        "value": "@body('AddContribution')"
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "FilterRecordsFromExcel": [
+                      "Succeeded"
+                    ]
+                  },
+                  "else": {
+                    "actions": {
+                      "UpdateContribution": {
+                        "runAfter": {},
+                        "type": "ApiConnection",
+                        "inputs": {
+                          "body": {
+                            "AnnualQuantity": "@items('LoopRecordsFromExcel')?['AnnualQuantity']",
+                            "AnnualReach": "@items('LoopRecordsFromExcel')?['AnnualReach']",
+                            "ContributionId": "@{first(body('FilterRecordsFromExcel'))?['ContributionId']}",
+                            "ContributionTechnology": {
+                              "AwardCategory": "@{first(body('FilterContributionAreas'))?['AwardCategory']}",
+                              "AwardName": "@{first(body('FilterContributionAreas'))?['AwardName']}",
+                              "Id": "@{first(body('FilterContributionAreas'))?['Id']}",
+                              "Name": "@{first(body('FilterContributionAreas'))?['Name']}"
+                            },
+                            "ContributionType": {
+                              "EnglishName": "@{first(body('FilterContributionTypes'))?['EnglishName']}",
+                              "Id": "@{first(body('FilterContributionTypes'))?['Id']}",
+                              "Name": "@{first(body('FilterContributionTypes'))?['Name']}"
+                            },
+                            "ContributionTypeName": "@{first(body('FilterContributionTypes'))?['Name']}",
+                            "Description": "@items('LoopRecordsFromExcel')?['Description']",
+                            "ReferenceUrl": "@{items('LoopRecordsFromExcel')?['URL']}",
+                            "SecondAnnualQuantity": "@items('LoopRecordsFromExcel')?['SecondAnnualQuantity']",
+                            "StartDate": "@{items('LoopRecordsFromExcel')?['DateOfActivityConverted']}",
+                            "Title": "@{items('LoopRecordsFromExcel')?['TitleOfActivity']}",
+                            "Visibility": {
+                              "Description": "Everyone",
+                              "Id": 299600000,
+                              "LocalizeKey": "PublicVisibilityText"
+                            }
+                          },
+                          "headers": {
+                            "Ocp-Apim-Subscription-Key": "@parameters('$connections')['mvpcontributions']['apiKey']"
+                          },
+                          "host": {
+                            "connection": {
+                              "name": "@parameters('$connections')['mvpcontributions']['connectionId']"
+                            }
+                          },
+                          "method": "put",
+                          "path": "/api/contributions"
+                        }
+                      },
+                      "AddContributionUpdataed": {
+                        "runAfter": {
+                          "UpdateContribution": [
+                            "Succeeded"
+                          ]
+                        },
+                        "type": "AppendToArrayVariable",
+                        "inputs": {
+                          "name": "ContributionsUpdated",
+                          "value": {
+                            "AnnualQuantity": "@items('LoopRecordsFromExcel')?['AnnualQuantity']",
+                            "AnnualReach": "@items('LoopRecordsFromExcel')?['AnnualReach']",
+                            "ContributionId": "@{first(body('FilterRecordsFromExcel'))?['ContributionId']}",
+                            "ContributionTechnology": {
+                              "AwardCategory": "@{first(body('FilterContributionAreas'))?['AwardCategory']}",
+                              "AwardName": "@{first(body('FilterContributionAreas'))?['AwardName']}",
+                              "Id": "@{first(body('FilterContributionAreas'))?['Id']}",
+                              "Name": "@{first(body('FilterContributionAreas'))?['Name']}"
+                            },
+                            "ContributionType": {
+                              "EnglishName": "@{first(body('FilterContributionTypes'))?['EnglishName']}",
+                              "Id": "@{first(body('FilterContributionTypes'))?['Id']}",
+                              "Name": "@{first(body('FilterContributionTypes'))?['Name']}"
+                            },
+                            "ContributionTypeName": "@{first(body('FilterContributionTypes'))?['Name']}",
+                            "Description": "@items('LoopRecordsFromExcel')?['Description']",
+                            "ReferenceUrl": "@{items('LoopRecordsFromExcel')?['URL']}",
+                            "SecondAnnualQuantity": "@items('LoopRecordsFromExcel')?['SecondAnnualQuantity']",
+                            "StartDate": "@{items('LoopRecordsFromExcel')?['DateOfActivityConverted']}",
+                            "Title": "@{items('LoopRecordsFromExcel')?['TitleOfActivity']}",
+                            "Visibility": {
+                              "Description": "Everyone",
+                              "Id": 299600000,
+                              "LocalizeKey": "PublicVisibilityText"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@length(coalesce(body('FilterRecordsFromExcel'), json('[]')))",
+                          0
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "If"
+                }
+              },
+              "runAfter": {
+                "InitialiseContributionsUpdated": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Foreach"
+            },
+            "Response": {
+              "runAfter": {
+                "LoopRecordsFromExcel": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Response",
+              "inputs": {
+                "body": {
+                  "added": "@variables('ContributionsAdded')",
+                  "updated": "@variables('ContributionsUpdated')"
+                },
+                "statusCode": 200
+              }
+            }
+          },
+          "outputs": {}
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "mvpcontributions": {
+                "connectionId": "[variables('connectors').mvpcontributions.connectionId]",
+                "connectionName": "[variables('connectors').mvpcontributions.name]",
+                "id": "[variables('connectors').mvpcontributions.id]",
+                "apiKey": "[variables('connectors').mvpcontributions.apiKey]"
+              }
+            }
+          },
+          "nestedLogicApps": {
+            "value": {
+              "contributionTypes": {
+                "workflowId": "[variables('nestedLogicApps').contributionTypes.workflowId]",
+                "triggerId": "[variables('nestedLogicApps').contributionTypes.triggerId]",
+                "triggerUrl": "[listCallbackUrl(resourceId('Microsoft.Logic/workflows/triggers', variables('nestedLogicApps').contributionTypes.name, 'manual'), variables('logicApp').apiVersion).value]"
+              },
+              "contributionAreas": {
+                "workflowId": "[variables('nestedLogicApps').contributionAreas.workflowId]",
+                "triggerId": "[variables('nestedLogicApps').contributionAreas.triggerId]",
+                "triggerUrl": "[listCallbackUrl(resourceId('Microsoft.Logic/workflows/triggers', variables('nestedLogicApps').contributionAreas.name, 'manual'), variables('logicApp').apiVersion).value]"
+              },
+              "contributionsFromExcel": {
+                "workflowId": "[variables('nestedLogicApps').contributionsFromExcel.workflowId]",
+                "triggerId": "[variables('nestedLogicApps').contributionsFromExcel.triggerId]",
+                "triggerUrl": "[listCallbackUrl(resourceId('Microsoft.Logic/workflows/triggers', variables('nestedLogicApps').contributionsFromExcel.name, 'manual'), variables('logicApp').apiVersion).value]"
+              },
+              "contributionsFromSite": {
+                "workflowId": "[variables('nestedLogicApps').contributionsFromSite.workflowId]",
+                "triggerId": "[variables('nestedLogicApps').contributionsFromSite.triggerId]",
+                "triggerUrl": "[listCallbackUrl(resourceId('Microsoft.Logic/workflows/triggers', variables('nestedLogicApps').contributionsFromSite.name, 'manual'), variables('logicApp').apiVersion).value]"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

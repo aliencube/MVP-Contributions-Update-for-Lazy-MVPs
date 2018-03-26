@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|AnyCPU">
+      <Configuration>Debug</Configuration>
+      <Platform>AnyCPU</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|AnyCPU">
+      <Configuration>Release</Configuration>
+      <Platform>AnyCPU</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>cc44db1c-ead4-42a0-8ac4-5ed9df51faca</ProjectGuid>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PrepareForBuildDependsOn>
+    </PrepareForBuildDependsOn>
+  </PropertyGroup>
+  <Import Condition=" Exists('Deployment.targets') " Project="Deployment.targets" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
+  <!-- vertag<:>start tokens<:>maj.min -->
+  <Import Condition=" Exists('$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Deployment\1.1\DeploymentProject.targets') " Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Deployment\1.1\DeploymentProject.targets" />
+  <!-- vertag<:>end -->
+  <ItemGroup>
+    <None Include="Deployment.targets">
+      <Visible>False</Visible>
+    </None>
+    <Content Include="connector-mvpcontributions.json" />
+    <Content Include="connector-mvpcontributions.parameters.json" />
+    <Content Include="connector-onedrive.json" />
+    <Content Include="connector-onedrive.parameters.json" />
+    <Content Include="Deploy-AzureResourceGroup.ps1" />
+    <Content Include="connector-excel.json" />
+    <Content Include="connector-excel.parameters.json" />
+    <Content Include="mvp-contributions-connector.json" />
+    <Content Include="mvp-contributions-connector.parameters.json" />
+    <Content Include="mvp-contributions-contribution-types.json" />
+    <Content Include="mvp-contributions-contribution-types.parameters.json" />
+    <Content Include="mvp-contributions-contribution-areas.json" />
+    <Content Include="mvp-contributions-contribution-areas.parameters.json" />
+    <Content Include="mvp-contributions-main.json" />
+    <Content Include="mvp-contributions-main.parameters.json" />
+    <Content Include="mvp-contributions-site.json" />
+    <Content Include="mvp-contributions-site.parameters.json" />
+    <Content Include="mvp-contributions-excel.json" />
+    <Content Include="mvp-contributions-excel.parameters.json" />
+    <Content Include="LogicApp.json" />
+    <Content Include="LogicApp.parameters.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="swagger\" />
+  </ItemGroup>
+  <Target Name="GetReferenceAssemblyPaths" />
+</Project>

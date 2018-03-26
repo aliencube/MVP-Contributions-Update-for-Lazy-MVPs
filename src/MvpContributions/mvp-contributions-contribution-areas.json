@@ -1,0 +1,253 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "logicAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Logic App"
+      }
+    },
+    "logicAppLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Location of the Logic App"
+      },
+      "allowedValues": [
+        "[resourceGroup().location]",
+        "australiaeast",
+        "australiasoutheast",
+        "brazilsouth",
+        "centralus",
+        "eastasia",
+        "eastus",
+        "eastus2",
+        "japaneast",
+        "japanwest",
+        "northcentralus",
+        "northeurope",
+        "southcentralus",
+        "southeastasia",
+        "westeurope",
+        "westus"
+      ],
+      "defaultValue": "[resourceGroup().location]"
+    },
+
+    "author": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Author"
+      },
+      "defaultValue": "Justin Yoo"
+    },
+    "license": {
+      "type": "string",
+      "metadata": {
+        "description": "License"
+      },
+      "defaultValue": "MIT"
+    },
+    "projectName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the project"
+      },
+      "defaultValue": "MVP Contributions"
+    },
+    "projectSite": {
+      "type": "string",
+      "metadata": {
+        "description": "Project site URL"
+      },
+      "defaultValue": "https://github.com/aliencube/MVP-Contributions"
+    },
+    "projectOwner": {
+      "type": "string",
+      "metadata": {
+        "description": "Project owner"
+      },
+      "defaultValue": "https://aliencube.org"
+    },
+
+    "connectors": {
+      "type": "object",
+      "metadata": {
+        "description": "Logic Apps connectors"
+      },
+      "defaultValue": {}
+    },
+    "connectorApiKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "API key for custom connector"
+      }
+    }
+  },
+  "variables": {
+    "logicApp": {
+      "name": "[parameters('logicAppName')]",
+      "location": "[parameters('logicAppLocation')]",
+      "apiVersion": "[providers('Microsoft.Logic', 'workflows').apiVersions[0]]"
+    },
+    "connectors": {
+      "mvpcontributions": {
+        "name": "[parameters('connectors').mvpcontributions.name]",
+        "id": "[resourceId('Microsoft.Web/customApis', parameters('connectors').mvpcontributions.type)]",
+        "connectionId": "[concat(resourceGroup().id, '/providers/Microsoft.Web/connections/', parameters('connectors').mvpcontributions.name)]",
+        "apiKey": "[parameters('connectorApiKey')]"
+      }
+    },
+    "tags": {
+      "author": "[parameters('author')]",
+      "license": "[parameters('license')]",
+      "projectName": "[parameters('projectName')]",
+      "projectSite": "[parameters('projectSite')]",
+      "projectOwner": "[parameters('projectOwner')]"
+    }
+  },
+  "resources": [
+    {
+      "comments": "Logic App - Contribution Areas",
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "[variables('logicApp').apiVersion]",
+      "name": "[variables('logicApp').name]",
+      "location": "[variables('logicApp').location]",
+      "tags": "[variables('tags')]",
+      "properties": {
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "$connections": {
+              "defaultValue": {},
+              "type": "object"
+            }
+          },
+          "triggers": {
+            "manual": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "method": "GET",
+                "schema": {}
+              }
+            }
+          },
+          "actions": {
+            "InitialiseContributionAreas": {
+              "runAfter": {},
+              "type": "InitializeVariable",
+              "inputs": {
+                "variables": [
+                  {
+                    "name": "ContributionAreas",
+                    "type": "Array",
+                    "value": []
+                  }
+                ]
+              }
+            },
+            "FetchContributionAreas": {
+              "runAfter": {
+                "InitialiseContributionAreas": [
+                  "Succeeded"
+                ]
+              },
+              "type": "ApiConnection",
+              "inputs": {
+                "headers": {
+                  "Ocp-Apim-Subscription-Key": "@parameters('$connections')['mvpcontributions']['apiKey']"
+                },
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['mvpcontributions']['connectionId']"
+                  }
+                },
+                "method": "get",
+                "path": "/api/contributions/contributionareas"
+              }
+            },
+            "LoopAwardCategories": {
+              "foreach": "@body('FetchContributionAreas')",
+              "actions": {
+                "GetContributions": {
+                  "runAfter": {},
+                  "type": "Compose",
+                  "inputs": "@items('LoopAwardCategories')?['Contributions']"
+                },
+                "LoopContributions": {
+                  "foreach": "@outputs('GetContributions')",
+                  "actions": {
+                    "GetContributionAreas": {
+                      "runAfter": {},
+                      "type": "Compose",
+                      "inputs": "@items('LoopContributions')?['ContributionArea']"
+                    },
+                    "LoopContributionAreas": {
+                      "foreach": "@outputs('GetContributionAreas')",
+                      "actions": {
+                        "AddContributionArea": {
+                          "runAfter": {},
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "ContributionAreas",
+                            "value": "@items('LoopContributionAreas')"
+                          }
+                        }
+                      },
+                      "runAfter": {
+                        "GetContributionAreas": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "Foreach"
+                    }
+                  },
+                  "runAfter": {
+                    "GetContributions": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Foreach"
+                }
+              },
+              "runAfter": {
+                "FetchContributionAreas": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Foreach"
+            },
+            "Response": {
+              "runAfter": {
+                "LoopAwardCategories": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Response",
+              "inputs": {
+                "body": "@variables('ContributionAreas')",
+                "statusCode": 200
+              }
+            }
+          },
+          "outputs": {}
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "mvpcontributions": {
+                "connectionId": "[variables('connectors').mvpcontributions.connectionId]",
+                "connectionName": "[variables('connectors').mvpcontributions.name]",
+                "id": "[variables('connectors').mvpcontributions.id]",
+                "apiKey": "[variables('connectors').mvpcontributions.apiKey]"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

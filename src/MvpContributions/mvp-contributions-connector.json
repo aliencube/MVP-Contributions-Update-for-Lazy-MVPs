@@ -1,0 +1,60 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "connectorName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Logic App"
+      }
+    },
+    "connectorLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Location of the Logic App"
+      },
+      "allowedValues": [
+        "[resourceGroup().location]",
+        "australiaeast",
+        "australiasoutheast",
+        "brazilsouth",
+        "centralus",
+        "eastasia",
+        "eastus",
+        "eastus2",
+        "japaneast",
+        "japanwest",
+        "northcentralus",
+        "northeurope",
+        "southcentralus",
+        "southeastasia",
+        "westeurope",
+        "westus"
+      ],
+      "defaultValue": "[resourceGroup().location]"
+    }
+  },
+  "variables": {
+    "connector": {
+      "name": "[parameters('connectorName')]",
+      "location": "[parameters('connectorLocation')]",
+      "apiVersion": "[providers('Microsoft.Web', 'customApis').apiVersions[0]]"
+    }
+  },
+  "resources": [
+    {
+      "comments": "Logic App Custom Connector - MVP Contributions",
+      "type": "Microsoft.Web/customApis",
+      "apiVersion": "[variables('connector').apiVersion]",
+      "name": "[variables('connector').name]",
+      "location": "[variables('connector').location]",
+      "properties": {
+        "displayName": "[variables('connector').name]",
+        "backendService": {
+          "serviceUrl": "https://localhost:443"
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "connectorName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the connector"
+      }
+    },
+    "connectorType": {
+      "type": "string",
+      "metadata": {
+        "description": "Type of the connector"
+      },
+      "defaultValue": ""
+    },
+    "connectorLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Location of the connector"
+      },
+      "allowedValues": [
+        "[resourceGroup().location]",
+        "australiaeast",
+        "australiasoutheast",
+        "brazilsouth",
+        "centralus",
+        "eastasia",
+        "eastus",
+        "eastus2",
+        "japaneast",
+        "japanwest",
+        "northcentralus",
+        "northeurope",
+        "southcentralus",
+        "southeastasia",
+        "westeurope",
+        "westus"
+      ],
+      "defaultValue": "[resourceGroup().location]"
+    }
+  },
+  "variables": {
+    "connector": {
+      "id": "[resourceId('Microsoft.Web/customApis', parameters('connectorType'))]",
+      "name": "[parameters('connectorName')]",
+      "location": "[parameters('connectorLocation')]",
+      "apiVersion": "[providers('Microsoft.Web', 'connections').apiVersions[0]]"
+    }
+  },
+  "resources": [
+    {
+      "comments": "Logic App Connector - MVP Contributions API",
+      "type": "Microsoft.Web/connections",
+      "apiVersion": "[variables('connector').apiVersion]",
+      "name": "[variables('connector').name]",
+      "location": "[variables('connector').location]",
+      "properties": {
+        "displayName": "[variables('connector').name]",
+        "customParameterValues": {},
+        "api": {
+          "id": "[variables('connector').id]"
+        }
+      },
+      "dependsOn": []
+    }
+  ],
+  "outputs": {}
+}
